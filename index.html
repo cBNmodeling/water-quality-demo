@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1f4bd8">
+  <title>松花江污染物迁移—转化动态模拟</title>
+  <style>
+    :root{font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC",system-ui,sans-serif;color:#18345d;background:#f4f8ff;font-synthesis:none}
+    *{box-sizing:border-box} body{margin:0} button,select,input{font:inherit} button{cursor:pointer}
+    .shell{max-width:1480px;margin:auto;padding:18px clamp(14px,2.6vw,36px) 30px}
+    header{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:16px}
+    .eyebrow{font-size:13px;font-weight:800;letter-spacing:.09em;color:#5576b4;margin:0 0 4px}
+    h1{font-size:clamp(24px,2.3vw,36px);line-height:1.25;color:#153995;margin:0}
+    .subtitle{margin:6px 0 0;font-size:15px;color:#5b7092}
+    .header-tag{border:1px solid #cbdafa;color:#2855bd;background:#fff;border-radius:99px;padding:8px 14px;font-size:13px;font-weight:700;white-space:nowrap}
+    .modebar{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 14px}
+    .modebar button,.controls button,.demo{border:1px solid #bfd1f7;background:#fff;color:#234ba5;border-radius:10px;padding:10px 18px;min-height:44px;font-weight:750;transition:background .15s,border-color .15s,transform .15s}
+    .modebar button:hover,.controls button:hover,.demo:hover{border-color:#1f4bd8;transform:translateY(-1px)}
+    .modebar button[aria-pressed="true"],.controls .primary{background:#1f4bd8;color:#fff;border-color:#1f4bd8}
+    .demo{margin-left:auto;background:#e9f1ff;border-color:#9bb8f5}
+    .guidance{display:flex;align-items:center;gap:12px;border-left:4px solid #1f4bd8;background:#eaf2ff;border-radius:0 10px 10px 0;padding:10px 14px;margin-bottom:14px;font-size:15px;line-height:1.45}
+    .guidance strong{color:#153995;white-space:nowrap}.guidance span{color:#445f87}
+    .surface{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:14px}
+    .card{background:#fff;border:1px solid #d9e5f7;border-radius:14px;box-shadow:0 2px 10px rgba(25,66,137,.035)}
+    .river-card,.plot-card,.decay-card{padding:16px 18px}
+    .section-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:9px}
+    h2{font-size:18px;color:#183f9e;margin:0}.minor{font-size:13px;color:#647b9f}
+    .river-labels,.river-km{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:750;color:#2c528d}
+    .river-labels .flow{font-weight:650;color:#4b88bd;background:#eaf5ff;border-radius:99px;padding:3px 12px}
+    .river-km{color:#6b81a2;font-weight:600;padding:0 2px}
+    #riverSvg{display:block;width:100%;height:155px;overflow:hidden}
+    .legend{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:13px;color:#617b9f;margin-top:6px}
+    .legend-ramp{height:9px;width:94px;border-radius:99px;background:linear-gradient(90deg,#f6db69,#f39a35,#c73131)}
+    .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:14px}
+    .stat{background:#f2f7ff;border:1px solid #e0eafa;border-radius:9px;padding:9px 10px;min-width:0}
+    .stat span{display:block;color:#6780a3;font-size:12px;margin-bottom:4px}
+    .stat strong{display:block;color:#193f9e;font-size:clamp(15px,1.4vw,20px);line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .monitor{padding:16px;display:flex;flex-direction:column;gap:12px;background:linear-gradient(180deg,#fff,#f7faff)}
+    .monitor .top{font-size:13px;color:#5879a9;font-weight:800;letter-spacing:.05em}
+    .monitor h2{font-size:19px;margin-top:-5px}
+    .monitor-value{font-size:clamp(30px,2.9vw,42px);line-height:1.15;font-weight:800;color:#18439e;letter-spacing:-.035em;white-space:nowrap}
+    .monitor-value small{font-size:15px;letter-spacing:0;color:#5e7495}
+    .standard{font-size:14px;color:#5f769a;border-top:1px solid #dce7f8;padding-top:10px}
+    .standard strong{color:#183f9e}
+    .badge{align-self:flex-start;border-radius:99px;padding:6px 12px;font-size:14px;font-weight:800;background:#e6f0fb;color:#3c6eae}
+    .badge.danger{background:#fff0ef;color:#c52e32}.badge.safe{background:#e7f7ec;color:#168046}
+    .milestone{display:none;border:1px solid #f3c1a9;background:#fff8f2;border-radius:10px;padding:10px 12px;color:#9f361d;font-size:14px;line-height:1.45}
+    .milestone.show{display:block}.milestone strong{display:block;font-size:16px}
+    .plot-card{margin-top:14px}.plot-card canvas,.decay-card canvas{display:block;width:100%;height:285px}
+    .decay-layout{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:14px}
+    .decay-card canvas{height:350px}.decay-monitor{min-height:390px}
+    .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding:14px 16px}
+    .controls button{min-width:74px;padding:9px 13px}.controls button:disabled{opacity:.5;cursor:default;transform:none}
+    .controls label{font-size:14px;color:#526d94;font-weight:700;margin-left:auto}
+    .controls select{min-height:40px;border:1px solid #c8d8f5;border-radius:8px;background:#fff;color:#224898;padding:4px 8px}
+    .timeline{min-width:0;flex:1 1 100%;padding:2px 3px 0}
+    input[type=range]{width:100%;height:26px;margin:0;appearance:none;background:transparent;touch-action:none}
+    input[type=range]::-webkit-slider-runnable-track{height:7px;border-radius:99px;background:linear-gradient(90deg,#1f4bd8 var(--progress,0%),#dce8fb var(--progress,0%))}
+    input[type=range]::-moz-range-track{height:7px;border-radius:99px;background:#dce8fb}
+    input[type=range]::-moz-range-progress{height:7px;border-radius:99px;background:#1f4bd8}
+    input[type=range]::-webkit-slider-thumb{appearance:none;width:20px;height:20px;border-radius:50%;border:3px solid #fff;background:#1f4bd8;box-shadow:0 0 0 2px #1f4bd8;margin-top:-6.5px}
+    input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;border:3px solid #fff;background:#1f4bd8;box-shadow:0 0 0 2px #1f4bd8}
+    .ticks{position:relative;height:30px;font-size:12px;color:#6b83a5}.ticks span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}.ticks span:first-child{transform:none}.ticks span:last-child{transform:translateX(-100%)}
+    .ticks .key{color:#d04431;font-weight:800}.ticks .key::before{content:"";display:block;height:6px;width:1px;background:#d04431;margin:auto auto 3px}
+    .model{margin-top:14px;padding:0 16px}.model summary{cursor:pointer;list-style:none;padding:14px 0;color:#1e4aaa;font-weight:800}.model summary::-webkit-details-marker{display:none}.model summary::after{content:" ＋"}.model[open] summary::after{content:" －"}
+    .model-body{border-top:1px solid #e2eaf8;padding:10px 0 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px 26px;font-size:14px;line-height:1.7;color:#536d91}
+    .formula{display:block;color:#194096;font-size:16px;overflow-wrap:anywhere;margin:3px 0}
+    .equation{margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:14px;color:#577091}
+    .equation strong{color:#183f9e}.term{border:1px solid #d6e4fa;background:#fff;border-radius:8px;padding:7px 10px;white-space:nowrap}
+    .summary{display:none;margin-top:14px;padding:20px;border-color:#b5cef7;background:linear-gradient(110deg,#f0f6ff,#fff)}
+    .summary.show{display:block;position:fixed;z-index:20;top:50%;left:50%;transform:translate(-50%,-50%);width:min(860px,calc(100vw - 24px));box-shadow:0 18px 55px rgba(24,63,158,.2)}
+    body:has(.summary.show)::before{content:"";position:fixed;inset:0;z-index:19;background:rgba(244,248,255,.72);pointer-events:none}
+    .summary h2{font-size:21px}.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+    .summary-grid div{background:#fff;border:1px solid #d8e6fa;border-radius:9px;padding:12px;color:#234a9d;font-weight:750;text-align:center}
+    .summary p{margin:12px 0 0;color:#4d668c;font-size:14px}
+    [hidden]{display:none!important}
+    @media(max-width:840px){header{align-items:flex-start}.header-tag{display:none}.surface,.decay-layout{grid-template-columns:1fr}.monitor{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}.monitor .top,.monitor h2,.monitor .milestone{grid-column:1/-1}.monitor-value{font-size:32px}.decay-monitor{min-height:0}.stat strong{font-size:17px}}
+    @media(max-width:600px){.shell{padding:14px 12px 28px}.modebar{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.modebar button{padding:10px 6px}.demo{margin-left:0}.guidance{display:block;font-size:14px}.guidance strong{display:block;margin-bottom:3px}.river-card,.plot-card,.decay-card{padding:13px 10px}.river-labels{font-size:12px}.river-labels .flow{font-size:12px;padding:3px 6px}#riverSvg{height:119px}.stats{grid-template-columns:repeat(2,1fr)}.stat strong{font-size:17px}.monitor-value{font-size:30px}.plot-card canvas{height:260px}.decay-card canvas{height:285px}.controls{gap:8px;padding:12px}.controls button{flex:1 1 26%;min-width:0;padding:9px 7px}.controls label{margin-left:0}.model-body{grid-template-columns:1fr}.summary-grid{grid-template-columns:1fr}.summary-grid div{text-align:left}.equation{gap:7px}.term{white-space:normal}}
+  </style>
+</head>
+<body>
+<main class="shell">
+  <header>
+    <div><p class="eyebrow">《水环境保护》 · 课堂交互案例</p><h1>松花江污染物迁移—转化动态模拟</h1><p class="subtitle">对流输运 · 纵向弥散 · 一级衰减</p></div>
+    <span class="header-tag">吉林石化事故点 → 哈尔滨 · 550 km</span>
+  </header>
+  <nav class="modebar" aria-label="过程模式">
+    <button type="button" data-mode="dispersion" aria-pressed="true">迁移 + 弥散</button>
+    <button type="button" data-mode="decay" aria-pressed="false">一级衰减</button>
+    <button type="button" class="demo" id="demoBtn">▶ 自动演示</button>
+  </nav>
+  <div class="guidance"><strong id="guidanceTitle">观察</strong><span id="guidanceText">污染团中心什么时候到达哈尔滨？</span></div>
+
+  <div id="transportView">
+    <div class="surface">
+      <section class="card river-card" aria-labelledby="riverTitle">
+        <div class="section-head"><h2 id="riverTitle">河流沿程 · 污染水团</h2></div>
+        <div class="river-labels"><span>吉林石化事故点</span><span class="flow">水流方向 →</span><span>哈尔滨监测断面</span></div>
+        <svg id="riverSvg" viewBox="0 0 1000 154" role="img" aria-label="污染带随时间沿河道移动和展宽">
+          <defs>
+            <linearGradient id="water" x2="0" y2="1"><stop stop-color="#c7ebfb"/><stop offset="1" stop-color="#83c7ee"/></linearGradient>
+            <linearGradient id="plume" x1="0" x2="1"><stop stop-color="#f6de6c" stop-opacity="0"/><stop offset=".18" stop-color="#f6d45d" stop-opacity=".55"/><stop offset=".36" stop-color="#f28a32" stop-opacity=".9"/><stop offset=".5" stop-color="#c83132"/><stop offset=".64" stop-color="#f28a32" stop-opacity=".9"/><stop offset=".82" stop-color="#f6d45d" stop-opacity=".55"/><stop offset="1" stop-color="#f6de6c" stop-opacity="0"/></linearGradient>
+            <clipPath id="channel"><rect x="44" y="30" width="908" height="94" rx="17"/></clipPath>
+          </defs>
+          <rect x="44" y="30" width="908" height="94" rx="17" fill="url(#water)" stroke="#91c8e9"/>
+          <g clip-path="url(#channel)"><path d="M40 52 Q165 48 280 54 T520 52 T760 54 T970 51 M40 101 Q175 97 300 103 T570 102 T980 99" fill="none" stroke="#fff" stroke-width="2" opacity=".44"/>
+            <ellipse id="plumeOuter" cx="44" cy="77" rx="20" ry="42" fill="url(#plume)" opacity=".67"/>
+            <ellipse id="plumeInner" cx="44" cy="77" rx="14" ry="31" fill="url(#plume)" opacity=".94"/>
+          </g>
+          <line x1="952" x2="952" y1="17" y2="137" stroke="#164bb7" stroke-width="4"/>
+          <circle cx="952" cy="77" r="5" fill="#fff" stroke="#164bb7" stroke-width="3"/>
+          <path d="M44 130v7 M952 130v7" stroke="#4674b4" stroke-width="2"/>
+        </svg>
+        <div class="river-km"><span>0 km</span><span>550 km</span></div>
+        <div class="legend"><span class="legend-ramp" aria-hidden="true"></span>低浓度 → 高浓度</div>
+        <div class="stats" aria-label="实时状态">
+          <div class="stat"><span>当前时间</span><strong id="timeStat">0.0 d</strong></div>
+          <div class="stat"><span>污染团中心位置</span><strong id="positionStat">0 km</strong></div>
+          <div class="stat"><span id="distanceLabel">距哈尔滨</span><strong id="distanceStat">550 km</strong></div>
+        </div>
+      </section>
+      <aside class="card monitor" aria-labelledby="monitorTitle">
+        <span class="top">550 km · 实时监测</span><h2 id="monitorTitle">哈尔滨断面</h2>
+        <div class="monitor-value"><span id="stationC">&lt;0.001</span> <small>mg/L</small></div>
+        <div class="standard">水质控制标准 <strong>0.017 mg/L</strong></div>
+        <span class="badge" id="stationStatus">未到达</span>
+        <div class="milestone" id="arrivalCallout"><strong>污染水团中心到达哈尔滨</strong><span>t ≈ 11 d · c₀ ≈ 0.587 mg/L<br>约为控制标准的 34.5 倍</span></div>
+      </aside>
+    </div>
+    <section class="card plot-card" aria-labelledby="plotTitle">
+      <div class="section-head"><h2 id="plotTitle">浓度 C — 距离 x</h2></div>
+      <canvas id="spatialPlot" role="img" aria-label="沿程浓度曲线，哈尔滨位置为550公里"></canvas>
+    </section>
+  </div>
+
+  <div class="decay-layout" id="decayView" hidden>
+    <section class="card decay-card" aria-labelledby="decayTitle">
+      <div class="section-head"><h2 id="decayTitle">浓度 C — 时间 t</h2><span class="minor">c = c₀e<sup>−kt</sup> · k = 0.05 d⁻¹</span></div>
+      <canvas id="decayPlot" role="img" aria-label="一级衰减曲线和0.017毫克每升标准线"></canvas>
+    </section>
+    <aside class="card monitor decay-monitor" aria-labelledby="decayMonitorTitle">
+      <span class="top">一级衰减 · 单独计时</span><h2 id="decayMonitorTitle">当前浓度</h2>
+      <div class="monitor-value"><span id="decayC">0.587</span> <small>mg/L</small></div>
+      <div class="standard">当前时间 <strong id="decayTime">0.0 d</strong><br>水质控制标准 <strong>0.017 mg/L</strong></div>
+      <span class="badge danger" id="decayStatus">仍超标</span>
+      <div class="milestone" id="decayCallout"><strong>约 71 d 达到控制标准</strong><span>从 0.587 mg/L 降至 0.017 mg/L，计算值约 70.8 d。</span></div>
+    </aside>
+  </div>
+
+  <section class="card controls" aria-label="动画控制">
+    <button type="button" class="primary" id="playBtn">▶ 播放</button><button type="button" id="pauseBtn">Ⅱ 暂停</button><button type="button" id="resetBtn">↺ 重新开始</button>
+    <label for="speed">速度</label><select id="speed" aria-label="播放速度"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
+    <div class="timeline"><input id="timeSlider" type="range" min="0" max="15" step="0.01" value="0" aria-label="时间滑块：天"><div class="ticks" id="ticks"></div></div>
+  </section>
+  <section class="card summary" id="summary" aria-live="polite"><h2>现象重新对应到水质方程</h2><div class="summary-grid"><div>迁移改变位置</div><div>弥散改变空间分布</div><div>转化减少污染物质量</div></div><p>∂c/∂t + u∂c/∂x = E∂²c/∂x² + Sᵢ</p><button type="button" id="summaryRestart" class="demo" style="margin-top:14px">↺ 重新演示</button></section>
+  <details class="card model"><summary>查看模型公式</summary><div class="model-body"><div><strong>第一阶段 · 迁移—弥散</strong><span class="formula">c(x,t) = W / [A√(4πEt)] · exp[−(x−ut)²/(4Et)]</span>t = x/u ≈ 10.98 d ≈ 11 d；u 控制中心移动，E 控制污染带展宽。</div><div><strong>第二阶段 · 一级衰减</strong><span class="formula">c = c₀e<sup>−kt</sup>，t<sub>d</sub> = ln(c₀/c<sub>s</sub>)/k</span>k 控制衰减速度；本例 c₀ = 0.587 mg/L。</div></div></details>
+  <div class="equation" aria-label="方程各项的物理意义"><strong>回到方程</strong><span class="term">∂c/∂t：浓度变化</span><span class="term">u∂c/∂x：对流输运</span><span class="term">E∂²c/∂x²：纵向弥散</span><span class="term">Sᵢ：源汇 / 反应</span></div>
+</main>
+<script>
+// 所有案例参数集中在此；W_ton 为公吨，浓度最终以 mg/L 显示。
+const params = {distanceKm:550, W_ton:100, area:1800, velocity:0.58, dispersion:750, k:0.05, standard:0.017};
+
+const DAY=86400, DIST_M=params.distanceKm*1000, W_MG=params.W_ton*1e9;
+const arrivalExact=DIST_M/params.velocity/DAY;       // 10.9754 d，课堂中约取 11 d
+const arrivalTeaching=11;
+// 以课堂约 11 d 的哈尔滨断面浓度保留三位小数，得到例题 c0=0.587。
+function transportC(km,days){
+  if(days<=0)return 0;
+  const t=days*DAY, dx=km*1000-params.velocity*t;
+  const mgPerM3=W_MG/(params.area*Math.sqrt(4*Math.PI*params.dispersion*t))*Math.exp(-dx*dx/(4*params.dispersion*t));
+  return mgPerM3/1000; // mg/m³ → mg/L
+}
+const teachingC0=Number(transportC(params.distanceKm,arrivalTeaching).toFixed(3));
+const exceedRatio=teachingC0/params.standard;
+const decayTarget=Math.log(teachingC0/params.standard)/params.k;
+const $=id=>document.getElementById(id);
+const modes={dispersion:"迁移 + 弥散",decay:"一级衰减"};
+const state={mode:"dispersion",time:0,playing:false,speed:1,demo:"",holdUntil:0,arrivalHeld:false,decayHeld:false,lastFrame:0,summary:false};
+const riverStart=44,riverWidth=908;
+
+function centerKm(days){return params.velocity*DAY*days/1000}
+function decayC(days){return teachingC0*Math.exp(-params.k*days)}
+function concentrationText(c){return c<.0005?"<0.001":c>=.1?c.toFixed(3):c.toFixed(4)}
+function setBadge(el,label,kind){el.textContent=label;el.className="badge"+(kind?" "+kind:"")}
+
+function setMode(mode,reset=true){
+  state.mode=mode;
+  if(reset){state.time=0;state.playing=false;state.demo="";state.arrivalHeld=false;state.decayHeld=false;state.summary=false}
+  document.querySelectorAll("[data-mode]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.mode===mode)));
+  $("transportView").hidden=mode==="decay";$("decayView").hidden=mode!=="decay";
+  const slider=$("timeSlider");slider.max=mode==="decay"?"80":"15";
+  $("ticks").innerHTML=mode==="decay"
+    ? '<span style="left:0%">0 d</span><span style="left:44.4%">35 d</span><span class="key" style="left:88.75%">约 71 d · 达标</span><span style="left:100%">80 d</span>'
+    : '<span style="left:0%">0 d</span><span style="left:33.33%">5 d</span><span class="key" style="left:73.33%">11 d · 到达</span><span style="left:100%">15 d</span>';
+  $("guidanceText").textContent=mode==="dispersion"?"污染团中心什么时候到达哈尔滨？":"浓度什么时候降至控制标准？";
+  render();
+}
+
+function renderRiver(){
+  const x=centerKm(state.time), sigmaKm=Math.sqrt(2*params.dispersion*Math.max(state.time,.12)*DAY)/1000;
+  const radius=Math.max(18,3*sigmaKm/params.distanceKm*riverWidth);
+  const screenX=riverStart+x/params.distanceKm*riverWidth;
+  $("plumeOuter").setAttribute("cx",screenX);$("plumeOuter").setAttribute("rx",radius);
+  $("plumeInner").setAttribute("cx",screenX);$("plumeInner").setAttribute("rx",radius*.73);
+  $("timeStat").textContent=state.time.toFixed(1)+" d";
+  $("positionStat").textContent=Math.round(x)+" km";
+  const remaining=params.distanceKm-x;
+  $("distanceLabel").textContent=remaining>=0?"距哈尔滨":"越过哈尔滨";
+  $("distanceStat").textContent=Math.round(Math.abs(remaining))+" km";
+  const c=transportC(params.distanceKm,state.time);
+  $("stationC").textContent=concentrationText(c);
+  setBadge($("stationStatus"),c>=params.standard?"超标":"低于标准",c>=params.standard?"danger":"safe");
+  $("arrivalCallout").classList.toggle("show",state.mode==="dispersion"&&state.time>=arrivalTeaching-.005);
+}
+
+// Canvas 按容器实际像素重绘，保证手机上的坐标字仍可辨认。
+function canvasContext(canvas){
+  const w=canvas.clientWidth,h=canvas.clientHeight,dpr=Math.min(window.devicePixelRatio||1,2);
+  if(!w||!h)return null;
+  const pw=Math.round(w*dpr),ph=Math.round(h*dpr);
+  if(canvas.width!==pw||canvas.height!==ph){canvas.width=pw;canvas.height=ph}
+  const ctx=canvas.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);return {ctx,w,h};
+}
+function axis(ctx,w,h,xmax,ymax,xticks,yticks,xlabel,ylabel){
+  const m={l:w<480?48:65,r:w<480?16:27,t:25,b:42}, pw=w-m.l-m.r,ph=h-m.t-m.b;
+  ctx.font='12px "Microsoft YaHei",sans-serif';ctx.lineWidth=1;ctx.textAlign="right";ctx.textBaseline="middle";
+  for(let i=0;i<=yticks;i++){
+    let value=ymax*i/yticks,y=m.t+ph*(1-i/yticks);
+    ctx.strokeStyle="#e9eff9";ctx.beginPath();ctx.moveTo(m.l,y);ctx.lineTo(m.l+pw,y);ctx.stroke();
+    ctx.fillStyle="#7185a5";ctx.fillText(value===0?"0":value>=1?value.toFixed(1):value.toFixed(value<.1?3:2),m.l-7,y);
+  }
+  ctx.textBaseline="top";ctx.textAlign="center";
+  for(const value of xticks){let x=m.l+pw*value/xmax;ctx.fillStyle="#7185a5";ctx.fillText(String(value),x,m.t+ph+9)}
+  ctx.strokeStyle="#8fa9d1";ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(m.l,m.t);ctx.lineTo(m.l,m.t+ph);ctx.lineTo(m.l+pw,m.t+ph);ctx.stroke();
+  ctx.fillStyle="#526d96";ctx.font='13px "Microsoft YaHei",sans-serif';ctx.textAlign="center";
+  ctx.fillText(xlabel,m.l+pw/2,h-18);ctx.textAlign="left";ctx.fillText(ylabel,m.l+4,3);
+  return {m,pw,ph,X:v=>m.l+pw*v/xmax,Y:v=>m.t+ph*(1-v/ymax)};
+}
+function dashed(ctx,x1,y1,x2,y2,color){ctx.save();ctx.setLineDash([5,5]);ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.restore()}
+function renderSpatial(){
+  const c=canvasContext($("spatialPlot"));if(!c)return;
+  const {ctx,w,h}=c;
+  // 固定纵轴到 6 mg/L，使初始高峰也完整显示，同时保留不同时刻的可比性。
+  const drawTime=Math.max(state.time,.12),ymax=2.4;
+  const a=axis(ctx,w,h,600,ymax,[0,100,200,300,400,500,600],4,"沿程距离 x / km","浓度 C / mg·L⁻¹");
+  const val=km=>{
+    if(state.time>0)return transportC(km,state.time);
+    const spread=params.dispersion*drawTime*DAY,dx=km*1000;
+    return W_MG/(params.area*Math.sqrt(4*Math.PI*spread))/1000*Math.exp(-dx*dx/(4*spread));
+  };
+  const pts=[];for(let i=0;i<=300;i++){const km=i*2;pts.push([a.X(km),a.Y(val(km))])}
+  ctx.save();ctx.beginPath();ctx.rect(a.m.l,a.m.t,a.pw,a.ph);ctx.clip();
+  ctx.beginPath();ctx.moveTo(pts[0][0],a.Y(0));for(const p of pts)ctx.lineTo(...p);ctx.lineTo(pts.at(-1)[0],a.Y(0));ctx.closePath();
+  const grad=ctx.createLinearGradient(0,a.m.t,0,a.Y(0));grad.addColorStop(0,"rgba(211,65,40,.33)");grad.addColorStop(1,"rgba(246,184,72,.03)");ctx.fillStyle=grad;ctx.fill();
+  ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p));ctx.strokeStyle="#dc5630";ctx.lineWidth=2.8;ctx.stroke();
+  ctx.restore();
+  const sx=a.X(params.distanceKm);dashed(ctx,sx,a.m.t,sx,a.Y(0),"#2857b0");
+  ctx.font='12px "Microsoft YaHei",sans-serif';ctx.textAlign="right";ctx.textBaseline="top";ctx.fillStyle="#2857b0";ctx.fillText("哈尔滨",sx-5,a.m.t+4);
+  if(state.time>0){const v=transportC(params.distanceKm,state.time),y=a.Y(Math.min(v,ymax));ctx.beginPath();ctx.arc(sx,y,4,0,Math.PI*2);ctx.fillStyle="#1f4bd8";ctx.fill()}
+  const cx=centerKm(state.time);if(cx<=600){const px=a.X(cx),py=a.Y(val(cx));ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fillStyle="#b83232";ctx.fill();ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.stroke()}
+}
+function renderDecay(){
+  $("decayTime").textContent=state.time.toFixed(1)+" d";
+  const c=decayC(state.time),reached=state.time>=decayTarget-1e-7;
+  $("decayC").textContent=reached&&Math.abs(state.time-decayTarget)<.01?params.standard.toFixed(3):state.time===0?teachingC0.toFixed(3):c>=.1?c.toFixed(3):c.toFixed(4);
+  setBadge($("decayStatus"),reached?"已达标":"仍超标",reached?"safe":"danger");
+  $("decayCallout").classList.toggle("show",reached);
+  const data=canvasContext($("decayPlot"));if(!data)return;
+  const {ctx,w,h}=data,a=axis(ctx,w,h,80,.65,[0,20,40,60,80],5,"时间 t / d","浓度 C / mg·L⁻¹");
+  dashed(ctx,a.m.l,a.Y(params.standard),a.X(80),a.Y(params.standard),"#cf3d3e");
+  ctx.font='12px "Microsoft YaHei",sans-serif';ctx.textAlign="left";ctx.textBaseline="bottom";ctx.fillStyle="#bc353a";ctx.fillText("控制标准 0.017",a.m.l+5,a.Y(params.standard)-5);
+  dashed(ctx,a.X(decayTarget),a.m.t,a.X(decayTarget),a.Y(0),"#80a6d7");
+  ctx.beginPath();for(let i=0;i<=320;i++){const t=i/4;i?ctx.lineTo(a.X(t),a.Y(decayC(t))):ctx.moveTo(a.X(t),a.Y(decayC(t)))}
+  ctx.lineWidth=3;ctx.strokeStyle="#1f4bd8";ctx.stroke();
+  ctx.beginPath();ctx.arc(a.X(state.time),a.Y(c),6,0,2*Math.PI);ctx.fillStyle=reached?"#168046":"#d94738";ctx.fill();ctx.lineWidth=2;ctx.strokeStyle="#fff";ctx.stroke();
+  ctx.fillStyle="#325cab";ctx.textAlign="right";ctx.textBaseline="top";ctx.fillText("约 71 d",a.X(decayTarget)-5,a.m.t+4);
+}
+function render(){
+  const slider=$("timeSlider"),max=Number(slider.max);
+  slider.value=String(Math.min(max,state.time));slider.style.setProperty("--progress",(state.time/max*100)+"%");
+  $("summary").classList.toggle("show",state.summary);
+  $("playBtn").disabled=state.playing||state.summary;
+  $("pauseBtn").disabled=!state.playing;
+  if(state.mode==="decay")renderDecay();else{renderRiver();renderSpatial()}
+}
+function startDemo(){
+  setMode("dispersion");state.demo="travel";state.playing=true;state.lastFrame=0;render();
+}
+function tick(now){
+  if(state.playing){
+    const dt=state.lastFrame?Math.min((now-state.lastFrame)/1000,.08):0;
+    if(state.demo){
+      if(state.demo==="travel"){
+        state.time=Math.min(arrivalTeaching,state.time+dt*arrivalTeaching/11.5);
+        if(state.time>=arrivalTeaching){state.demo="arrivalHold";state.holdUntil=now+1100}
+      }else if(state.demo==="arrivalHold"&&now>=state.holdUntil){
+        setMode("decay",false);state.time=0;state.demo="decay";
+      }else if(state.demo==="decay"){
+        state.time=Math.min(decayTarget,state.time+dt*decayTarget/8.5);
+        if(state.time>=decayTarget){state.demo="decayHold";state.holdUntil=now+900}
+      }else if(state.demo==="decayHold"&&now>=state.holdUntil){state.demo="";state.playing=false;state.summary=true}
+    }else if(now>=state.holdUntil){
+      const rate=state.mode==="decay"?decayTarget/9:1;
+      const previous=state.time;state.time=Math.min(Number($("timeSlider").max),state.time+dt*rate*state.speed);
+      if(state.mode==="decay"&&!state.decayHeld&&previous<decayTarget&&state.time>=decayTarget){state.time=decayTarget;state.decayHeld=true;state.holdUntil=now+900}
+      if(state.mode==="dispersion"&&!state.arrivalHeld&&previous<arrivalTeaching&&state.time>=arrivalTeaching){state.time=arrivalTeaching;state.arrivalHeld=true;state.holdUntil=now+1000}
+      if(state.time>=Number($("timeSlider").max))state.playing=false;
+    }
+    render();
+  }
+  state.lastFrame=now;requestAnimationFrame(tick);
+}
+document.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>setMode(b.dataset.mode)));
+$("demoBtn").addEventListener("click",startDemo);
+$("summaryRestart").addEventListener("click",startDemo);
+$("playBtn").addEventListener("click",()=>{if(state.summary){state.summary=false}state.demo="";state.playing=true;state.holdUntil=0;state.lastFrame=0;render()});
+$("pauseBtn").addEventListener("click",()=>{state.playing=false;state.demo="";render()});
+$("resetBtn").addEventListener("click",()=>setMode(state.mode));
+$("speed").addEventListener("change",e=>{state.speed=Number(e.target.value)});
+$("timeSlider").addEventListener("input",e=>{state.playing=false;state.demo="";state.summary=false;state.holdUntil=0;state.time=Number(e.target.value);state.arrivalHeld=state.time>=arrivalTeaching;state.decayHeld=state.time>=decayTarget;render()});
+window.addEventListener("resize",render);
+// 关键结论由参数计算后写入展示文案，主流程仍以约 11 d 为教学取值。
+$("arrivalCallout").querySelector("span").innerHTML=`t ≈ ${arrivalTeaching} d · c₀ ≈ ${teachingC0.toFixed(3)} mg/L<br>约为控制标准的 ${exceedRatio.toFixed(1)} 倍`;
+$("decayCallout").querySelector("strong").textContent=`约 ${Math.round(decayTarget)} d 达到控制标准`;
+$("decayCallout").querySelector("span").textContent=`从 ${teachingC0.toFixed(3)} mg/L 降至 ${params.standard.toFixed(3)} mg/L，计算值约 ${decayTarget.toFixed(1)} d。`;
+setMode("dispersion");requestAnimationFrame(tick);
+</script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"7939e04a4baf43c8b86a560f74aac60e","spa":2}' crossorigin="anonymous"></script>
+</body>
+</html>
